@@ -1,0 +1,141 @@
+name: Playwright Test Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select Test Environment'
+        required: true
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+        default: '1'
+      test_file:
+        description: 'Select Test to Run'
+        required: true
+        type: choice
+        options:
+          - 'all'
+          - 'tests/galaxyModel.spec.ts'
+          - 'tests/invoiceDocscannerFlow.spec.ts'
+        default: 'all'
+      browser:
+        description: 'Browser to run tests on'
+        required: true
+        type: choice
+        options:
+          - 'chromium'
+          - 'firefox'
+          - 'webkit'
+          - 'all'
+        default: 'chromium'
+
+jobs:
+  test:
+    name: Run Playwright Tests - ${{ matrix.test_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        test_file: ${{ inputs.test_file == 'all' && fromJSON('["tests/galaxyModel.spec.ts", "tests/invoiceDocscannerFlow.spec.ts"]') || fromJSON(format('["{0}"]', inputs.test_file)) }}
+        include:
+          - test_file: tests/galaxyModel.spec.ts
+            test_name: Galaxy Model
+          - test_file: tests/invoiceDocscannerFlow.spec.ts
+            test_name: Invoice DocScanner
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Create .env file
+        run: |
+          echo "CURRENT_ENV=${{ inputs.environment }}" >> .env
+          echo "URL_SITE_1=${{ secrets.URL_SITE_1 }}" >> .env
+          echo "USERNAME_1=${{ secrets.USERNAME_1 }}" >> .env
+          echo "PASSWORD_1=${{ secrets.PASSWORD_1 }}" >> .env
+          echo "URL_SITE_2=${{ secrets.URL_SITE_2 }}" >> .env
+          echo "USERNAME_2=${{ secrets.USERNAME_2 }}" >> .env
+          echo "PASSWORD_2=${{ secrets.PASSWORD_2 }}" >> .env
+          echo "URL_SITE_3=${{ secrets.URL_SITE_3 }}" >> .env
+          echo "USERNAME_3=${{ secrets.USERNAME_3 }}" >> .env
+          echo "PASSWORD_3=${{ secrets.PASSWORD_3 }}" >> .env
+          echo "URL_SITE_4=${{ secrets.URL_SITE_4 }}" >> .env
+          echo "USERNAME_4=${{ secrets.USERNAME_4 }}" >> .env
+          echo "PASSWORD_4=${{ secrets.PASSWORD_4 }}" >> .env
+
+      - name: Run Playwright tests (All browsers)
+        if: inputs.browser == 'all'
+        run: npx playwright test ${{ matrix.test_file }}
+        env:
+          CI: true
+
+      - name: Run Playwright tests (Specific browser)
+        if: inputs.browser != 'all'
+        run: npx playwright test ${{ matrix.test_file }} --project=${{ inputs.browser }}
+        env:
+          CI: true
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.test_name }}-env-${{ inputs.environment }}-${{ inputs.browser }}
+          path: playwright-report/
+          retention-days: 15
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.test_name }}-env-${{ inputs.environment }}-${{ inputs.browser }}
+          path: test-results/
+          retention-days: 15
+
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          npm install -g allure-commandline --save-dev
+          allure generate ./allure-results --clean -o ./allure-report
+        continue-on-error: true
+
+      - name: Upload Allure Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-report-${{ matrix.test_name }}-env-${{ inputs.environment }}-${{ inputs.browser }}
+          path: allure-report/
+          retention-days: 15
+        continue-on-error: true
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## Test Execution Summary 📊 - ${{ matrix.test_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test:** ${{ matrix.test_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Browser:** ${{ inputs.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test File:** ${{ matrix.test_file }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Playwright HTML Report: playwright-report-${{ matrix.test_name }}-env-${{ inputs.environment }}-${{ inputs.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Results: test-results-${{ matrix.test_name }}-env-${{ inputs.environment }}-${{ inputs.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Allure Report: allure-report-${{ matrix.test_name }}-env-${{ inputs.environment }}-${{ inputs.browser }}" >> $GITHUB_STEP_SUMMARY
+
