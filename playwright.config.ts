@@ -12,7 +12,7 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  reporter: "allure-playwright",
+  // reporter: "allure-playwright",
   testDir: './tests',
   timeout: 600000,
   /* Run tests in files in parallel */

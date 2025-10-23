@@ -32,7 +32,7 @@ async function isAnyTablePresent(page: Page): Promise<boolean> {
 
 // --- Main Playwright Test ---
 
-test('Splitting and Label flow test with sidebar and table validation', async ({ page, request }) => {
+test('test with sidebar and table validation', async ({ page, request }) => {
     // Get environment configuration
     const env = getEnvironment();
     
@@ -50,7 +50,7 @@ test('Splitting and Label flow test with sidebar and table validation', async ({
     await page.waitForTimeout(10000);
     await expect(page).toHaveURL(/dashboard/);
 
-    const ScanningBtn = await page.locator("//a[@class='Staple-style-62 Staple-style-63 Staple-style-78']");
+    const ScanningBtn = await page.locator("xpath=/html/body/div/section/div[1]/div[1]/div/a[3]");
     await ScanningBtn.click();
     const currentDate = new Date();
 
