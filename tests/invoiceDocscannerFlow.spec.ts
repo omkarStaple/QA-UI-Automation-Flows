@@ -1,6 +1,7 @@
 import { test, expect, request, Page, Locator } from '@playwright/test'; // Added Locator import
 import { getEnvironment } from '../utils/environment';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
 dotenv.config();
 
 // --- Helper Function for Dynamic Table Presence Validation ---
@@ -111,8 +112,9 @@ const formattedDateTime = `${year}-${month}-${day}_${hours}-${minutes}-${seconds
     // Wait for the file chooser dialog and handle it
     const fileChooser = await fileChooserPromise;
 
-    // Provide the path to the file you want to upload
-    await fileChooser.setFiles(['C:/Users/omkar/Downloads/(5629618) edd.pdf']);
+    // Provide the path to the test file (use relative path from project root)
+    const testFilePath = path.join(process.cwd(), 'test-data', '(5629618) edd.pdf');
+    await fileChooser.setFiles([testFilePath]);
     await page.waitForTimeout(5000); // Give time for file selection to register
     const confirmFileBtn = await page.locator("//span[normalize-space()='CONFIRM']");
     await confirmFileBtn.click();
